@@ -23,6 +23,8 @@ load_dotenv()
 def format_docs(docs):
     return "\n\n".join(doc.page_content for doc in docs)
 
+def chunks_docs(docs):
+    return [doc.page_content for doc in docs]
 
 llm = ChatGroq(model_name="llama-3.1-8b-instant", temperature=0.7)
 
@@ -55,30 +57,17 @@ def evaluate_rag_pipeline(query):
         {
             "question": RunnablePassthrough(),
             "context": retriever | RunnableLambda(format_docs),
+            "chunks_context":retriever | RunnableLambda(chunks_docs)
         }
     )
 
     parser = StrOutputParser()
     output = rag_chain | template_1() | llm_1() | parser
-    result = output.invoke(query)
-    return result
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    
+    return {
+        "answer": output,
+        "contexts": rag_chain.chunks_context
+    }
 
 
 
