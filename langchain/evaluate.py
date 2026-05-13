@@ -17,6 +17,35 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_huggingface import HuggingFaceEmbeddings
 
 
+
+
+
+questions = [
+    "What is the main objective of the blockchain course proposal?",
+    "Which programming language is used for writing smart contracts in the course?",
+    "Name two consensus algorithms discussed in the course.",
+    "How does blockchain help in AI integration?",
+    "What practical project is suggested in the course?",
+    "Which tools are recommended for blockchain development in the course?",
+    "What are the hardware requirements for this course?",
+    "How is the course evaluation structured?",
+    "Which departments can benefit from this blockchain course?",
+    "What future opportunities can arise from this course proposal?"
+]
+
+answers = [
+    "The main objective is to provide theoretical and practical knowledge of blockchain systems, smart contracts, and decentralized applications.",
+    "Solidity is used for writing smart contracts.",
+    "Proof of Work and Proof of Stake are two consensus algorithms discussed in the course.",
+    "Blockchain helps AI integration by securing AI model sharing and maintaining training data provenance.",
+    "A Blockchain-based Secure Voting System is suggested as a practical group project.",
+    "The course recommends tools such as Metamask, Solidity, Truffle Suite, and Ganache.",
+    "The course requires systems with at least 8 GB RAM and GPU-enabled setups for blockchain simulation.",
+    "The evaluation consists of theory, practical work, projects, assignments, quizzes, and attendance.",
+    "Computer Science, Information Technology, AI & Data Science, and Electronics & Telecommunication departments can benefit from the course.",
+    "The course can lead to industry collaborations, internships, research opportunities, and the establishment of a Blockchain Research Cell."
+]
+
 load_dotenv()
 
 
@@ -86,30 +115,3 @@ def evaluate_rag_pipeline(query):
 
 
 
-
-
-questions = [
-    "What is the main objective of the blockchain course proposal?",
-    "Which programming language is used for writing smart contracts in the course?",
-    "Name two consensus algorithms discussed in the course.",
-    "How does blockchain help in AI integration?",
-    "What practical project is suggested in the course?",
-    "Which tools are recommended for blockchain development in the course?",
-    "What are the hardware requirements for this course?",
-    "How is the course evaluation structured?",
-    "Which departments can benefit from this blockchain course?",
-    "What future opportunities can arise from this course proposal?"
-]
-
-answers = [
-    "The main objective is to provide theoretical and practical knowledge of blockchain systems, smart contracts, and decentralized applications.",
-    "Solidity is used for writing smart contracts.",
-    "Proof of Work and Proof of Stake are two consensus algorithms discussed in the course.",
-    "Blockchain helps AI integration by securing AI model sharing and maintaining training data provenance.",
-    "A Blockchain-based Secure Voting System is suggested as a practical group project.",
-    "The course recommends tools such as Metamask, Solidity, Truffle Suite, and Ganache.",
-    "The course requires systems with at least 8 GB RAM and GPU-enabled setups for blockchain simulation.",
-    "The evaluation consists of theory, practical work, projects, assignments, quizzes, and attendance.",
-    "Computer Science, Information Technology, AI & Data Science, and Electronics & Telecommunication departments can benefit from the course.",
-    "The course can lead to industry collaborations, internships, research opportunities, and the establishment of a Blockchain Research Cell."
-]
