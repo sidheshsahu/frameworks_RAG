@@ -15,7 +15,16 @@ from core.prompt_template import template_1
 from langchain_groq import ChatGroq
 from langchain_core.output_parsers import StrOutputParser
 from langchain_huggingface import HuggingFaceEmbeddings
-
+from ragas import evaluate
+from ragas.metrics import (
+    faithfulness,
+    answer_relevancy,
+    context_precision,
+    context_recall,
+    answer_similarity,
+    answer_correctness
+)
+from datasets import Dataset
 
 
 
@@ -79,9 +88,10 @@ def rag_pipeline(file_path):
 
     return retriever
 
-retriever = rag_pipeline(r"D:\ProdRAG\prodRAG\example.pdf")
 
-def evaluate_rag_pipeline(query):
+
+def evaluate_rag_pipeline(query,file_path):
+    retriever = rag_pipeline(file_path);
     rag_chain = RunnableParallel(
         {
             "question": RunnablePassthrough(),
@@ -101,7 +111,54 @@ def evaluate_rag_pipeline(query):
 
 
 
+answers = []
+contexts = []
 
+for query in queries:
+    result = rag_pipeline(
+        query=query,
+        file_path="example.pdf"
+    )
+
+    answers.append(result["answer"])
+    contexts.append(result["contexts"])
+
+
+data = {
+    "question": queries,
+    "answer": answers,
+    "contexts": contexts,
+    "ground_truth": ground_truths
+}
+
+dataset = Dataset.from_dict(data)
+
+
+
+score = evaluate(
+    dataset=dataset,
+    metrics=[
+        faithfulness,
+        answer_relevancy,
+        context_precision,
+        context_recall,
+        answer_similarity,
+        answer_correctness
+    ],
+    llm=evaluator_llm
+)
+
+
+
+score_df = score.to_pandas()
+
+score_df.to_csv(
+    "EvaluationScores.csv",
+    encoding="utf-8",
+    index=False
+)
+
+print(score_df)
 
 
 
