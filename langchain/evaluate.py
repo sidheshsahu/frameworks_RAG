@@ -26,9 +26,6 @@ from ragas.metrics import (
 )
 from datasets import Dataset
 
-
-
-
 questions = [
     "What is the main objective of the blockchain course proposal?",
     "Which programming language is used for writing smart contracts in the course?",
@@ -114,7 +111,7 @@ def evaluate_rag_pipeline(query,file_path):
 answers = []
 contexts = []
 
-for query in queries:
+for query in questions:
     result = rag_pipeline(
         query=query,
         file_path="example.pdf"
@@ -125,10 +122,10 @@ for query in queries:
 
 
 data = {
-    "question": queries,
+    "question": questions,
     "answer": answers,
     "contexts": contexts,
-    "ground_truth": ground_truths
+    "ground_truth": answers
 }
 
 dataset = Dataset.from_dict(data)
@@ -144,8 +141,7 @@ score = evaluate(
         context_recall,
         answer_similarity,
         answer_correctness
-    ],
-    llm=evaluator_llm
+    ]
 )
 
 
