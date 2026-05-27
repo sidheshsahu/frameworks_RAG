@@ -96,13 +96,13 @@ def evaluate_rag_pipeline(query,file_path):
             "chunks_context":retriever | RunnableLambda(chunks_docs)
         }
     )
-    rag_chain.invoke(query)
+    result=rag_chain.invoke(query)
     parser = StrOutputParser()
     output = rag_chain | template_1() | llm_1() | parser
     
     return {
         "answer": output,
-        "contexts": rag_chain.chunks_context
+        "contexts": result["chunks_context"]
     }
 
 
@@ -112,13 +112,13 @@ answers = []
 contexts = []
 
 for query in questions:
-    result = evaluate_rag_pipeline(
+    generated_result = evaluate_rag_pipeline(
         query,
         "example.pdf"
     )
 
-    answers.append(result["answer"])
-    contexts.append(result["contexts"])
+    answers.append(generated_result["answer"])
+    contexts.append(generated_result["contexts"])
 
 
 data = {
@@ -143,7 +143,6 @@ score = evaluate(
         answer_correctness
     ]
 )
-
 
 
 score_df = score.to_pandas()
