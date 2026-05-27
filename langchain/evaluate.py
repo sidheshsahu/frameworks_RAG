@@ -88,7 +88,7 @@ def rag_pipeline(file_path):
 
 
 def evaluate_rag_pipeline(query,file_path):
-    retriever = rag_pipeline(file_path);
+    retriever = rag_pipeline(file_path)
     rag_chain = RunnableParallel(
         {
             "question": RunnablePassthrough(),
@@ -96,7 +96,7 @@ def evaluate_rag_pipeline(query,file_path):
             "chunks_context":retriever | RunnableLambda(chunks_docs)
         }
     )
-
+    rag_chain.invoke(query)
     parser = StrOutputParser()
     output = rag_chain | template_1() | llm_1() | parser
     
@@ -112,9 +112,9 @@ answers = []
 contexts = []
 
 for query in questions:
-    result = rag_pipeline(
-        query=query,
-        file_path="example.pdf"
+    result = evaluate_rag_pipeline(
+        query,
+        "example.pdf"
     )
 
     answers.append(result["answer"])
