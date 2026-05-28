@@ -16,6 +16,9 @@ from langchain_groq import ChatGroq
 from langchain_core.output_parsers import StrOutputParser
 from langchain_huggingface import HuggingFaceEmbeddings
 from ragas import evaluate
+from ragas import evaluate, EvaluationDataset
+from ragas.llms import LangchainLLMWrapper
+from ragas.embeddings import LangchainEmbeddingsWrapper
 from ragas.metrics import (
     faithfulness,
     answer_relevancy,
@@ -39,7 +42,7 @@ questions = [
     "What future opportunities can arise from this course proposal?"
 ]
 
-answers = [
+reference = [
     "The main objective is to provide theoretical and practical knowledge of blockchain systems, smart contracts, and decentralized applications.",
     "Solidity is used for writing smart contracts.",
     "Proof of Work and Proof of Stake are two consensus algorithms discussed in the course.",
@@ -54,6 +57,13 @@ answers = [
 
 load_dotenv()
 
+llm = ChatGroq(model_name="llama-3.1-8b-instant", temperature=0.7)
+embedder = HuggingFaceEmbeddings(
+        model_name="sentence-transformers/all-MiniLM-L6-v2"
+    )
+evaluator_llm = LangchainLLMWrapper(llm)
+evaluator_embeddings = LangchainEmbeddingsWrapper(embedder)
+
 
 def format_docs(docs):
     return "\n\n".join(doc.page_content for doc in docs)
@@ -61,7 +71,6 @@ def format_docs(docs):
 def chunks_docs(docs):
     return [doc.page_content for doc in docs]
 
-llm = ChatGroq(model_name="llama-3.1-8b-instant", temperature=0.7)
 
 
 def rag_pipeline(file_path):
@@ -71,9 +80,7 @@ def rag_pipeline(file_path):
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     texts = text_splitter.split_documents(documents)
 
-    embedder = HuggingFaceEmbeddings(
-        model_name="sentence-transformers/all-MiniLM-L6-v2"
-    )
+    
 
     vectorstore = PineconeVectorStore.from_documents(
         texts, embedder, index_name=create_index_1()
@@ -128,12 +135,10 @@ data = {
     "question": questions,
     "answer": answers,
     "contexts": contexts,
-    "ground_truth": answers
+    "ground_truth": reference
 }
 
 dataset = Dataset.from_dict(data)
-
-
 
 score = evaluate(
     dataset=dataset,
@@ -144,7 +149,9 @@ score = evaluate(
         context_recall,
         answer_similarity,
         answer_correctness
-    ]
+    ],
+    llm=evaluator_llm,
+    embeddings=evaluator_embeddings
 )
 
 
