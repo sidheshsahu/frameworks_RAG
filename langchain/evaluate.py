@@ -83,28 +83,32 @@ def rag_pipeline(file_path):
         search_type="similarity", search_kwargs={"k": 3}
     )
 
+
     return retriever
 
+retriever = rag_pipeline("example.pdf")
 
+def evaluate_rag_pipeline(query):
 
-def evaluate_rag_pipeline(query,file_path):
-    retriever = rag_pipeline(file_path)
     rag_chain = RunnableParallel(
         {
             "question": RunnablePassthrough(),
             "context": retriever | RunnableLambda(format_docs),
-            "chunks_context":retriever | RunnableLambda(chunks_docs)
+            "chunks_context": retriever | RunnableLambda(chunks_docs)
         }
     )
-    result=rag_chain.invoke(query)
+
+    result = rag_chain.invoke(query)
+
     parser = StrOutputParser()
-    output = rag_chain | template_1() | llm_1() | parser
-    
+
+    output_chain =rag_chain | template_1() | llm_1() | parser
+    answer = output_chain.invoke(query)
+
     return {
-        "answer": output,
+        "answer": answer,
         "contexts": result["chunks_context"]
     }
-
 
 
 
@@ -113,8 +117,7 @@ contexts = []
 
 for query in questions:
     generated_result = evaluate_rag_pipeline(
-        query,
-        "example.pdf"
+        query
     )
 
     answers.append(generated_result["answer"])
