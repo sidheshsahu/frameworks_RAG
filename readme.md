@@ -51,6 +51,7 @@ prodRAG/
 |   |-- prompt_template.py  # Shared prompt templates
 |-- Langchain/
 |   |-- pipeline.py         # LangChain RAG pipeline
+|   |-- evaluate.py         # LangChain RAGAS evaluation script
 |   |-- langchain.ipynb     # Notebook exploration
 |-- Langgraph/
 |   |-- pipeline.py         # LangGraph workflow-based RAG
@@ -74,6 +75,37 @@ The LangChain pipeline focuses on a more traditional RAG flow:
 - store vectors in Pinecone
 - retrieve relevant chunks
 - send retrieved context to the LLM
+
+#### LangChain Evaluation
+
+The evaluation script in [Langchain/evaluate.py](/d:/ProdRAG/prodRAG/Langchain/evaluate.py) measures the LangChain RAG pipeline with RAGAS.
+
+It currently:
+
+- loads `example.pdf`
+- chunks and embeds the document with HuggingFace embeddings
+- stores the chunks in Pinecone
+- retrieves the top matching contexts for a fixed set of sample questions
+- generates answers through the LangChain RAG chain
+- evaluates the results using RAGAS metrics
+- writes the scores to `EvaluationScores.csv`
+
+Metrics used:
+
+- `faithfulness`
+- `answer_relevancy`
+- `context_precision`
+- `context_recall`
+- `answer_similarity`
+- `answer_correctness`
+
+Run it from the project root with:
+
+```bash
+python Langchain/evaluate.py
+```
+
+Before running, make sure `example.pdf` exists and the required API keys are configured in `.env`, especially Groq and Pinecone credentials.
 
 ### 2. LangGraph
 
@@ -175,7 +207,7 @@ A few things to keep in mind:
 - some pipelines use hardcoded sample questions internally
 - indexing happens during execution, which is convenient for demos but not ideal for production
 - there is no persistent ingestion workflow yet
-- there is no evaluation harness yet
+- evaluation currently exists only for the LangChain path in `Langchain/evaluate.py`
 - error handling and config management are still lightweight
 
 ## Production Direction

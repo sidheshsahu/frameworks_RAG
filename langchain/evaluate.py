@@ -2,32 +2,28 @@ import os
 from langchain_pinecone import PineconeVectorStore
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_groq import ChatGroq
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnableParallel, RunnablePassthrough, RunnableLambda
 from dotenv import load_dotenv
-from langchain_core.runnables import (
-    RunnableParallel,
-    RunnablePassthrough,
-    RunnableLambda,
+
+from ragas import evaluate, EvaluationDataset         
+from ragas.llms import LangchainLLMWrapper
+from ragas.embeddings import LangchainEmbeddingsWrapper
+from ragas.metrics import (                            
+    LLMContextRecall,
+    Faithfulness,
+    FactualCorrectness,
+    ResponseRelevancy,
 )
+from ragas import RunConfig
+
 from core.doc_store import create_index_1
 from core.llm_call import llm_1
 from core.prompt_template import template_1
-from langchain_groq import ChatGroq
-from langchain_core.output_parsers import StrOutputParser
-from langchain_huggingface import HuggingFaceEmbeddings
-from ragas import evaluate
-from ragas import evaluate, EvaluationDataset
-from ragas.llms import LangchainLLMWrapper
-from ragas.embeddings import LangchainEmbeddingsWrapper
-from ragas.metrics import (
-    faithfulness,
-    answer_relevancy,
-    context_precision,
-    context_recall,
-    answer_similarity,
-    answer_correctness
-)
-from datasets import Dataset
+
+load_dotenv()
 
 questions = [
     "What is the main objective of the blockchain course proposal?",
@@ -42,7 +38,7 @@ questions = [
     "What future opportunities can arise from this course proposal?"
 ]
 
-reference = [
+ground_truths = [
     "The main objective is to provide theoretical and practical knowledge of blockchain systems, smart contracts, and decentralized applications.",
     "Solidity is used for writing smart contracts.",
     "Proof of Work and Proof of Stake are two consensus algorithms discussed in the course.",
@@ -55,15 +51,11 @@ reference = [
     "The course can lead to industry collaborations, internships, research opportunities, and the establishment of a Blockchain Research Cell."
 ]
 
-load_dotenv()
-
 llm = ChatGroq(model_name="llama-3.1-8b-instant", temperature=0.7)
-embedder = HuggingFaceEmbeddings(
-        model_name="sentence-transformers/all-MiniLM-L6-v2"
-    )
+embedder = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+
 evaluator_llm = LangchainLLMWrapper(llm)
 evaluator_embeddings = LangchainEmbeddingsWrapper(embedder)
-
 
 def format_docs(docs):
     return "\n\n".join(doc.page_content for doc in docs)
@@ -71,109 +63,62 @@ def format_docs(docs):
 def chunks_docs(docs):
     return [doc.page_content for doc in docs]
 
-
-
-def rag_pipeline(file_path):
+def build_retriever(file_path):
     loader = PyPDFLoader(file_path)
     documents = loader.load()
-
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
-    texts = text_splitter.split_documents(documents)
-
-    
-
+    texts = RecursiveCharacterTextSplitter(
+        chunk_size=500, chunk_overlap=50
+    ).split_documents(documents)
     vectorstore = PineconeVectorStore.from_documents(
         texts, embedder, index_name=create_index_1()
     )
+    return vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 3})
 
-    retriever = vectorstore.as_retriever(
-        search_type="similarity", search_kwargs={"k": 3}
-    )
+retriever = build_retriever("example.pdf")
 
+parser = StrOutputParser()
 
-    return retriever
+answer_chain = (
+    RunnableParallel({
+        "context": retriever | RunnableLambda(format_docs),
+        "question": RunnablePassthrough()
+    })
+    | template_1()    
+    | llm_1()
+    | parser
+)
 
-retriever = rag_pipeline("example.pdf")
+dataset_list = []
 
-def evaluate_rag_pipeline(query):
+for query, reference in zip(questions, ground_truths):
+    retrieved_docs = retriever.invoke(query)
+    retrieved_contexts = [doc.page_content for doc in retrieved_docs]
 
-    rag_chain = RunnableParallel(
-        {
-            "question": RunnablePassthrough(),
-            "context": retriever | RunnableLambda(format_docs),
-            "chunks_context": retriever | RunnableLambda(chunks_docs)
-        }
-    )
+    response = answer_chain.invoke(query)
 
-    result = rag_chain.invoke(query)
+    dataset_list.append({
+        "user_input": query,
+        "retrieved_contexts": retrieved_contexts,
+        "response": response,
+        "reference": reference
+    })
 
-    parser = StrOutputParser()
+evaluation_dataset = EvaluationDataset.from_list(dataset_list)  
 
-    output_chain =rag_chain | template_1() | llm_1() | parser
-    answer = output_chain.invoke(query)
-
-    return {
-        "answer": answer,
-        "contexts": result["chunks_context"]
-    }
-
-
-
-answers = []
-contexts = []
-
-for query in questions:
-    generated_result = evaluate_rag_pipeline(
-        query
-    )
-
-    answers.append(generated_result["answer"])
-    contexts.append(generated_result["contexts"])
-
-
-data = {
-    "question": questions,
-    "answer": answers,
-    "contexts": contexts,
-    "ground_truth": reference
-}
-
-dataset = Dataset.from_dict(data)
-
-score = evaluate(
-    dataset=dataset,
+result = evaluate(
+    dataset=evaluation_dataset,
     metrics=[
-        faithfulness,
-        answer_relevancy,
-        context_precision,
-        context_recall,
-        answer_similarity,
-        answer_correctness
+        Faithfulness(),       
+        LLMContextRecall(),   
+        FactualCorrectness(),  
+        ResponseRelevancy(),   
     ],
     llm=evaluator_llm,
-    embeddings=evaluator_embeddings
+    embeddings=evaluator_embeddings,
+    run_config=RunConfig(max_workers=1, timeout=120) 
 )
 
-
-score_df = score.to_pandas()
-
-score_df.to_csv(
-    "EvaluationScores.csv",
-    encoding="utf-8",
-    index=False
-)
-
+score_df = result.to_pandas()
+score_df.to_csv("EvaluationScores.csv", encoding="utf-8", index=False)
+print(result)
 print(score_df)
-
-
-
-
-
-
-
-
-
-
-
-
-
