@@ -51,7 +51,9 @@ ground_truths = [
     "The course can lead to industry collaborations, internships, research opportunities, and the establishment of a Blockchain Research Cell."
 ]
 
-llm = ChatGroq(model_name="llama-3.1-8b-instant", temperature=0.7)
+llm = ChatGroq(model_name="llama-3.1-8b-instant",
+    temperature=0.7,
+    n=1 )
 embedder = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
 evaluator_llm = LangchainLLMWrapper(llm)
@@ -115,8 +117,11 @@ result = evaluate(
     ],
     llm=evaluator_llm,
     embeddings=evaluator_embeddings,
-    run_config=RunConfig(max_workers=1, timeout=120) 
-)
+    run_config=RunConfig(
+        max_workers=1,
+        timeout=180,           
+        max_retries=5          
+    )) 
 
 score_df = result.to_pandas()
 score_df.to_csv("EvaluationScores.csv", encoding="utf-8", index=False)
