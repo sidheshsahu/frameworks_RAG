@@ -20,8 +20,7 @@ from langfuse.langchain import CallbackHandler
 
 load_dotenv()
 
-langfuse = get_client()
-langfuse_handler = CallbackHandler()
+
 
 
 def format_docs(docs):
@@ -59,5 +58,5 @@ def rag_pipeline(query, file_path):
 
     parser = StrOutputParser()
     output = rag_chain | template_1() | llm_1() | parser
-    result = output.invoke(query, config={"callbacks": [langfuse_handler]})
+    result = output.invoke(query)
     return result
